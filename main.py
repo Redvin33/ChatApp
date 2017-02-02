@@ -10,6 +10,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, port))
 #Initializes default values to JSON message
 message = { "channel" : "chat", "msg" : "", "command" : ""}
+chatrooms = []
 
 
 class chatroom:
@@ -28,8 +29,8 @@ class chatroom:
         self.__text_entry.grid( row=5, column=1 )
         self.__send_button.grid( row=5, column=2 )
 
-        s.send(channel.encode('utf-8'))
-        start_new_thread(self.connection, ())
+        chatrooms.append(self)
+
         self.__window.mainloop()
 
     def send(self):
@@ -44,20 +45,25 @@ class chatroom:
 
         packet = json.dumps(message)
         s.send(packet.encode('utf-8'))
+        message["command"] = ""
         return
 
     def receive(self, mesg):
         self.__chat.configure(text = self.__chat.cget("text") + mesg + "\n", anchor ="w")
 
+    def getChannel(self):
+        return self.__channel
 
-    def connection(self):
-        print("Connected to " + self.__channel + ".")
+def connection():
 
-        while 1:
-            rcv = s.recv(2048).decode('utf-8')
-            msg = json.loads(rcv)
-            if msg["channel"] == self.__channel:
-                self.receive(msg["msg"])
+
+    while 1:
+        rcv = s.recv(2048).decode('utf-8')
+        msg = json.loads(rcv)
+        for chatroom in chatrooms:
+
+            if msg["channel"] == chatroom.getChannel():
+                chatroom.receive(msg["msg"])
 
 
 class login_window:
@@ -83,7 +89,9 @@ class login_window:
         channel = self.__channel.get()
         self.__window.destroy()
         s.send(nickname.encode('utf-8'))
-        chatroom(channel)
+        s.send(channel.encode('utf-8'))
+        start_new_thread(connection, ())
 
+        chatroom(channel)
 
 login_window()

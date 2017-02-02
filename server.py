@@ -18,6 +18,14 @@ def client_thread(conn):
             msg = json.loads(packet)
             reply = connections[conn] + ": " + msg["msg"]
 
+            if msg["command"] == "/join":
+                chan = msg["channel"]
+                if chan not in channels.keys():
+                    channels[chan] = channel(conn)
+                else:
+                    channels[chan].addUser(conn)
+                continue
+
             for chan in channels:
                 if msg["channel"] == chan:
                     for user in channels[chan].users():

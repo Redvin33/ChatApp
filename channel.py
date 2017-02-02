@@ -9,5 +9,3 @@ class channel:
     def users(self):
         return self.__users
 
-alist = list(map(lambda x: x*x, [1, 5]))
-print(alist)
