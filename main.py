@@ -1,11 +1,16 @@
 from tkinter import*
 from _thread import*
+
 import socket
+import json
 
 host = 'localhost'
 port = 7777
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, port))
+#Initializes default values to JSON message
+message = { "channel" : "chat", "msg" : "", "command" : ""}
+
 
 class chatroom:
     def __init__(self, channel):
@@ -24,25 +29,35 @@ class chatroom:
         self.__send_button.grid( row=5, column=2 )
 
         s.send(channel.encode('utf-8'))
-        start_new_thread(connection, (self, channel))
+        start_new_thread(self.connection, ())
         self.__window.mainloop()
 
     def send(self):
-        msg = self.__text_entry.get()
-        s.send(msg.encode('utf-8'))
+        text = self.__text_entry.get()
+        if text[0] == "/":
+            message["command"] = text.split(' ')[0]
+            message["channel"] = text.split(' ')[1]
+            chatroom(message["channel"])
+        else:
+            message["channel"] = self.__channel
+            message["msg"] = text
+
+        packet = json.dumps(message)
+        s.send(packet.encode('utf-8'))
         return
 
     def receive(self, mesg):
         self.__chat.configure(text = self.__chat.cget("text") + mesg + "\n", anchor ="w")
 
 
+    def connection(self):
+        print("Connected to " + self.__channel + ".")
 
-def connection(chat, channel):
-    print("Connected to " + channel + ".")
-
-    while 1:
-        rcv_msg = s.recv(2048).decode('utf-8')
-        chat.receive(rcv_msg)
+        while 1:
+            rcv = s.recv(2048).decode('utf-8')
+            msg = json.loads(rcv)
+            if msg["channel"] == self.__channel:
+                self.receive(msg["msg"])
 
 
 class login_window:

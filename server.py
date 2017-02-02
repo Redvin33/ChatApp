@@ -1,28 +1,32 @@
 import socket
+import json
+from channel import channel
 from _thread import*
 
 host = 'localhost'
 port = 7777
 ss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connections = {}
+channels = {}
 
 
-def client_thread(conn, channel):
-    for user in connections:
-        if connections[user][1] == channel:
-            user.sendall(str.encode(connections[conn][0] + " has joined the room." +"\n" ))
-
-    conn.send(str.encode("Welcome " + connections[conn][0] + "\n"))
+def client_thread(conn):
 
     while True:
         try:
-            data = conn.recv(2048).decode('utf-8')
-            reply = connections[conn][0] + ": " + data
-            for user in connections:
-                if connections[user][1] == channel:
-                    user.sendall(str.encode(reply))
+            packet = conn.recv(2048).decode('utf-8')
+            msg = json.loads(packet)
+            reply = connections[conn] + ": " + msg["msg"]
 
-        except:
+            for chan in channels:
+                if msg["channel"] == chan:
+                    for user in channels[chan].users():
+                        msg["msg"] = reply
+                        mesg = json.dumps(msg)
+                        user.sendall(mesg.encode('utf-8'))
+
+        except error as e:
+            print(e)
             print(connections[conn][0] + " has disconnected")
             del connections[conn]
             break
@@ -44,8 +48,12 @@ def main():
         conn, addr = ss.accept()
         nickname = conn.recv(2048).decode('utf-8')
         chan = conn.recv(2048).decode('utf-8')
-        connections[conn] = nickname, chan
+        if chan not in channels.keys():
+            channels[chan] = channel(conn)
+        else:
+            channels[chan].addUser(conn)
+        connections[conn] = nickname
         print("connected to: " + str(addr[0]) + ":" + str(addr[1]))
-        start_new_thread(client_thread, (conn, chan))
+        start_new_thread(client_thread, (conn,))
 
 main()
