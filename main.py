@@ -1,6 +1,7 @@
 from tkinter import*
 from _thread import*
 
+
 import socket
 import json
 
@@ -17,28 +18,38 @@ class chatroom:
     def __init__(self, channel):
         self.__window = Tk()
         self.__window.title(channel)
-        self.__chat = Label(self.__window, bg ="#fff", width=30, height=40, pady=20, text="", justify=LEFT)
+        self.__chat = Listbox(self.__window, bg ="#fff", width=100, height=40)
+        self.__userlist = Listbox(self.__window, bg = "#fff", width=15, height=40)
         self.__channel = channel
+        self.__scroll =Scrollbar(self.__window)
+
 
         self.__text_entry = Entry(self.__window, width = 20, text="" )
         self.__send_button = Button(self.__window, text="SEND", command = self.send)
-        self.__send = False
+
+        self.__chat.config(yscrollcommand = self.__scroll.set)
+        self.__scroll.config(command=self.__chat.yview)
 
         #construction of TkInter grid
         self.__chat.grid( row=1, column=1, rowspan=4, columnspan=4 )
         self.__text_entry.grid( row=5, column=1 )
         self.__send_button.grid( row=5, column=2 )
-
+        self.__userlist.grid(row=1, column=6, rowspan=4, columnspan= 2, padx= 20)
+        self.__scroll.grid(row=1, column=5, rowspan=4)
         chatrooms.append(self)
 
         self.__window.mainloop()
 
     def send(self):
         text = self.__text_entry.get()
+        message["command"] = ""
         if text[0] == "/":
             message["command"] = text.split(' ')[0]
             message["channel"] = text.split(' ')[1]
+            packet = json.dumps(message)
+            s.send(packet.encode('utf-8'))
             chatroom(message["channel"])
+            return
         else:
             message["channel"] = self.__channel
             message["msg"] = text
@@ -46,16 +57,22 @@ class chatroom:
         packet = json.dumps(message)
         s.send(packet.encode('utf-8'))
         message["command"] = ""
+        self.__text_entry.delete(0, END)
         return
 
     def receive(self, mesg):
-        self.__chat.configure(text = self.__chat.cget("text") + mesg + "\n", anchor ="w")
+        self.__chat.insert(END, mesg)
+        self.__chat.see("end")
 
     def getChannel(self):
         return self.__channel
 
-def connection():
+    def addUserToUserlist(self, user):
+        self.__userlist.insert(END, user)
 
+
+
+def connection():
 
     while 1:
         rcv = s.recv(2048).decode('utf-8')
@@ -63,6 +80,11 @@ def connection():
         for chatroom in chatrooms:
 
             if msg["channel"] == chatroom.getChannel():
+                if msg["command"] == "userlist":
+
+                    for user in msg["msg"]:
+                        chatroom.addUserToUserlist(user)
+
                 chatroom.receive(msg["msg"])
 
 
