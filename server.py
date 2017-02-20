@@ -10,6 +10,16 @@ connections = {}
 channels = {}
 
 
+def UpdateUserlist(chan):
+    msg= {}
+    msg["channel"] = chan.name
+    msg["msg"] = chan.usernames()
+    msg["command"] = "userlist"
+    mesg = json.dumps(msg)
+    print(mesg)
+    for user in chan.users():
+        user.sendall(mesg.encode('utf-8'))
+
 def client_thread(conn):
 
     try:
@@ -22,10 +32,12 @@ def client_thread(conn):
             if msg["command"] == "/join":
                 chan = msg["channel"]
                 if chan not in channels.keys():
-                    channels[chan] = Channel(conn, connections[conn])
+                    channels[chan] = Channel(conn, connections[conn], chan)
                     print("Channel " + chan + " created." )
                 else:
-                    channels[chan].addUser(conn, connections[conn])
+                    channels[chan].adduser(conn, connections[conn])
+
+                UpdateUserlist(channels[chan])
                 continue
 
             for chan in channels:
@@ -35,11 +47,19 @@ def client_thread(conn):
                         mesg = json.dumps(msg)
                         user.sendall(mesg.encode('utf-8'))
 
-    except error as e:
-        print(e)
-        for channel in channels:
-            channels[channel].removeUser(conn, channel)
-        print(connections[conn][0] + " has disconnected")
+    except:
+        print(connections[conn] + " has disconnected")
+        for chan in channels:
+            channels[chan].removeuser(conn)
+            UpdateUserlist(channels[chan])
+            for user in channels[chan].users():
+                msg = {}
+                msg["command"] = ""
+                msg["channel"] = chan
+                msg["msg"] = connections[conn] + " has disconnected"
+                mesg = json.dumps(msg)
+                user.sendall(mesg.encode('utf-8'))
+
         del connections[conn]
         conn.close()
         return
@@ -62,17 +82,21 @@ def main():
         nickname = conn.recv(2048).decode('utf-8')
         chan = conn.recv(2048).decode('utf-8')
         if chan not in channels.keys():
-            channels[chan] = Channel(conn, nickname)
+            channels[chan] = Channel(conn, nickname, chan)
+
         else:
-            channels[chan].addUser(conn, nickname)
+            channels[chan].adduser(conn, nickname)
+
         connections[conn] = nickname
         print("connected to: " + str(addr[0]) + ":" + str(addr[1]))
-        msg = {}
-        msg["msg"] = channels[chan].UserNames()
-        msg["command"] = "userlist"
-        print(msg)
-        mesg = json.dumps(msg)
-        conn.sendall(mesg.encode('utf-8'))
+
         start_new_thread(client_thread, (conn,))
+        UpdateUserlist(channels[chan])
+
+
+
+
+
+
 
 main()

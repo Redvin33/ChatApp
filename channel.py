@@ -1,32 +1,23 @@
-import json
+
 
 class Channel:
 
-    def __init__(self, user, nick):
+    def __init__(self, user, nick, name):
         self.__users = {}
         self.__users[user] = nick
+        self.name = name
 
-    def addUser(self, user, nick):
+    def adduser(self, user, nick):
         self.__users[user] = nick
+
         return
 
-    def UserNames(self):
+    def usernames(self):
         return list(self.__users.values())
-
 
     def users(self):
         return list(self.__users.keys())
 
-    def removeUser(self, user, channel):
-        try:
-            del self.__users[user]
-            for user in self.__users:
-                mesg = {}
-                mesg["msg"] = self.__users[user] + "has disconnected."
-                mesg["channel"] = channel
-                msg = json.dumps(mesg)
-                user.sendall(msg.encode('utf-8'))
-        except:
-            return
-
+    def removeuser(self, user):
+        del self.__users[user]
         return

@@ -67,8 +67,10 @@ class chatroom:
     def getChannel(self):
         return self.__channel
 
-    def addUserToUserlist(self, user):
-        self.__userlist.insert(END, user)
+    def updateuserlist(self, userlist):
+        self.__userlist.delete(0, END)
+        for user in userlist:
+            self.__userlist.insert(END, user)
 
 
 
@@ -81,11 +83,9 @@ def connection():
 
             if msg["channel"] == chatroom.getChannel():
                 if msg["command"] == "userlist":
-
-                    for user in msg["msg"]:
-                        chatroom.addUserToUserlist(user)
-
-                chatroom.receive(msg["msg"])
+                    chatroom.updateuserlist(msg["msg"])
+                else:
+                    chatroom.receive(msg["msg"])
 
 
 class login_window:
