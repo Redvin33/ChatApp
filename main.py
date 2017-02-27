@@ -14,6 +14,7 @@ message = { "channel" : "chat", "msg" : "", "command" : ""}
 chatrooms = []
 
 
+
 class chatroom:
     def __init__(self, channel):
         self.__window = Tk()
@@ -21,7 +22,7 @@ class chatroom:
         self.__chat = Listbox(self.__window, bg ="#fff", width=100, height=40)
         self.__userlist = Listbox(self.__window, bg = "#fff", width=15, height=40)
         self.__channel = channel
-        self.__scroll =Scrollbar(self.__window)
+        self.__scroll = Scrollbar(self.__window)
 
 
         self.__text_entry = Entry(self.__window, width = 20, text="" )
@@ -37,8 +38,27 @@ class chatroom:
         self.__userlist.grid(row=1, column=6, rowspan=4, columnspan= 2, padx= 20)
         self.__scroll.grid(row=1, column=5, rowspan=4)
         chatrooms.append(self)
+        if len(chatrooms) == 1:
+            start_new_thread(connection, ())
+
+        #Sends server request to update channels userlist
+        message["command"] = "userlist"
+        message["channel"] = self.__channel
+
+        s.send(json.dumps(message).encode('utf-8'))
+
+
+        self.__window.protocol("WM_DELETE_WINDOW", self.deletewindow)
 
         self.__window.mainloop()
+
+    def deletewindow(self):
+        chatrooms.remove(self)
+        message["command"] = "userlist"
+        message["channel"] = self.__channel
+        message["msg"] = "remove"
+        s.send(json.dumps(message).encode('utf-8'))
+        self.__window.destroy()
 
     def send(self):
         text = self.__text_entry.get()
@@ -46,8 +66,10 @@ class chatroom:
         if text[0] == "/":
             message["command"] = text.split(' ')[0]
             message["channel"] = text.split(' ')[1]
+
             packet = json.dumps(message)
             s.send(packet.encode('utf-8'))
+            self.__text_entry.delete(0, END)
             chatroom(message["channel"])
             return
         else:
@@ -71,6 +93,7 @@ class chatroom:
         self.__userlist.delete(0, END)
         for user in userlist:
             self.__userlist.insert(END, user)
+        return
 
 
 
@@ -79,13 +102,15 @@ def connection():
     while 1:
         rcv = s.recv(2048).decode('utf-8')
         msg = json.loads(rcv)
-        for chatroom in chatrooms:
-
-            if msg["channel"] == chatroom.getChannel():
+        print(msg)
+        print(len(chatrooms))
+        for chat in chatrooms:
+            print(chat.getChannel())
+            if msg["channel"] == chat.getChannel():
                 if msg["command"] == "userlist":
-                    chatroom.updateuserlist(msg["msg"])
+                    chat.updateuserlist(msg["msg"])
                 else:
-                    chatroom.receive(msg["msg"])
+                    chat.receive(msg["msg"])
 
 
 class login_window:
@@ -112,8 +137,9 @@ class login_window:
         self.__window.destroy()
         s.send(nickname.encode('utf-8'))
         s.send(channel.encode('utf-8'))
-        start_new_thread(connection, ())
-
         chatroom(channel)
+
+
+
 
 login_window()

@@ -9,6 +9,16 @@ ss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connections = {}
 channels = {}
 
+def disconnectmsg(chan, conn):
+    for user in channels[chan].users():
+        msg = {}
+        msg["command"] = ""
+        msg["channel"] = chan
+        msg["msg"] = connections[conn] + " has disconnected"
+        mesg = json.dumps(msg)
+        user.sendall(mesg.encode('utf-8'))
+
+
 
 def UpdateUserlist(chan):
     msg= {}
@@ -16,6 +26,7 @@ def UpdateUserlist(chan):
     msg["msg"] = chan.usernames()
     msg["command"] = "userlist"
     mesg = json.dumps(msg)
+    print("perkele")
     print(mesg)
     for user in chan.users():
         user.sendall(mesg.encode('utf-8'))
@@ -23,12 +34,19 @@ def UpdateUserlist(chan):
 def client_thread(conn):
 
     try:
+
         while True:
 
             packet = conn.recv(2048).decode('utf-8')
             msg = json.loads(packet)
             reply = connections[conn] + ": " + msg["msg"]
             print(msg)
+            if msg["command"] == "userlist":
+                if msg["msg"] == "remove":
+                    channels[msg["channel"]].removeuser(conn)
+                    disconnectmsg(msg["channel"], conn)
+                UpdateUserlist(channels[msg["channel"]])
+                continue
             if msg["command"] == "/join":
                 chan = msg["channel"]
                 if chan not in channels.keys():
@@ -37,7 +55,7 @@ def client_thread(conn):
                 else:
                     channels[chan].adduser(conn, connections[conn])
 
-                UpdateUserlist(channels[chan])
+                #UpdateUserlist(channels[chan])
                 continue
 
             for chan in channels:
@@ -50,8 +68,9 @@ def client_thread(conn):
     except:
         print(connections[conn] + " has disconnected")
         for chan in channels:
-            channels[chan].removeuser(conn)
+            #channels[chan].removeuser(conn)
             UpdateUserlist(channels[chan])
+            disconnectmsg(chan, conn)
             for user in channels[chan].users():
                 msg = {}
                 msg["command"] = ""
@@ -74,6 +93,7 @@ def main():
         ss.bind((host, port))
     except socket.error as e:
         print(str(e))
+        exit()
 
     ss.listen(5)
 
@@ -89,14 +109,6 @@ def main():
 
         connections[conn] = nickname
         print("connected to: " + str(addr[0]) + ":" + str(addr[1]))
-
         start_new_thread(client_thread, (conn,))
-        UpdateUserlist(channels[chan])
-
-
-
-
-
-
 
 main()
