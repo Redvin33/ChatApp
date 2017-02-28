@@ -18,4 +18,5 @@ class Channel:
 
     def removeuser(self, user):
         del self.__users[user]
+
         return

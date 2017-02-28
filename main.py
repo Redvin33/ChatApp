@@ -6,7 +6,7 @@ import socket
 import json
 
 host = 'localhost'
-port = 7777
+port = 55555
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, port))
 #Initializes default values to JSON message
@@ -52,12 +52,14 @@ class chatroom:
 
         self.__window.mainloop()
 
+    #If window is closed, tells server that client disconnected from that channel
     def deletewindow(self):
-        chatrooms.remove(self)
+
         message["command"] = "userlist"
         message["channel"] = self.__channel
         message["msg"] = "remove"
         s.send(json.dumps(message).encode('utf-8'))
+        chatrooms.remove(self)
         self.__window.destroy()
 
     def send(self):
@@ -102,10 +104,8 @@ def connection():
     while 1:
         rcv = s.recv(2048).decode('utf-8')
         msg = json.loads(rcv)
-        print(msg)
-        print(len(chatrooms))
+
         for chat in chatrooms:
-            print(chat.getChannel())
             if msg["channel"] == chat.getChannel():
                 if msg["command"] == "userlist":
                     chat.updateuserlist(msg["msg"])
@@ -138,8 +138,5 @@ class login_window:
         s.send(nickname.encode('utf-8'))
         s.send(channel.encode('utf-8'))
         chatroom(channel)
-
-
-
 
 login_window()

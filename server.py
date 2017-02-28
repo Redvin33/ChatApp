@@ -4,10 +4,11 @@ from channel import Channel
 from _thread import*
 
 host = 'localhost'
-port = 7777
+port = 55555
 ss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connections = {}
 channels = {}
+
 
 def disconnectmsg(chan, conn):
     for user in channels[chan].users():
@@ -17,6 +18,7 @@ def disconnectmsg(chan, conn):
         msg["msg"] = connections[conn] + " has disconnected"
         mesg = json.dumps(msg)
         user.sendall(mesg.encode('utf-8'))
+    return
 
 
 
@@ -26,8 +28,7 @@ def UpdateUserlist(chan):
     msg["msg"] = chan.usernames()
     msg["command"] = "userlist"
     mesg = json.dumps(msg)
-    print("perkele")
-    print(mesg)
+
     for user in chan.users():
         user.sendall(mesg.encode('utf-8'))
 
@@ -40,45 +41,40 @@ def client_thread(conn):
             packet = conn.recv(2048).decode('utf-8')
             msg = json.loads(packet)
             reply = connections[conn] + ": " + msg["msg"]
-            print(msg)
+
             if msg["command"] == "userlist":
                 if msg["msg"] == "remove":
                     channels[msg["channel"]].removeuser(conn)
+                    if len(channels[msg["channel"]].users()) == 0:
+                        del channels[msg["channel"]]
+                        continue
                     disconnectmsg(msg["channel"], conn)
                 UpdateUserlist(channels[msg["channel"]])
                 continue
-            if msg["command"] == "/join":
+
+            elif msg["command"] == "/join":
                 chan = msg["channel"]
                 if chan not in channels.keys():
                     channels[chan] = Channel(conn, connections[conn], chan)
                     print("Channel " + chan + " created." )
+
                 else:
                     channels[chan].adduser(conn, connections[conn])
 
-                #UpdateUserlist(channels[chan])
+                UpdateUserlist(channels[chan])
+
                 continue
 
-            for chan in channels:
-                if msg["channel"] == chan:
-                    for user in channels[chan].users():
-                        msg["msg"] = reply
-                        mesg = json.dumps(msg)
-                        user.sendall(mesg.encode('utf-8'))
+            else:
+                for chan in channels:
+                    if msg["channel"] == chan:
+                        for user in channels[chan].users():
+                            msg["msg"] = reply
+                            mesg = json.dumps(msg)
+                            user.sendall(mesg.encode('utf-8'))
 
     except:
         print(connections[conn] + " has disconnected")
-        for chan in channels:
-            #channels[chan].removeuser(conn)
-            UpdateUserlist(channels[chan])
-            disconnectmsg(chan, conn)
-            for user in channels[chan].users():
-                msg = {}
-                msg["command"] = ""
-                msg["channel"] = chan
-                msg["msg"] = connections[conn] + " has disconnected"
-                mesg = json.dumps(msg)
-                user.sendall(mesg.encode('utf-8'))
-
         del connections[conn]
         conn.close()
         return
@@ -95,7 +91,7 @@ def main():
         print(str(e))
         exit()
 
-    ss.listen(5)
+    ss.listen(16)
 
     while True:
         conn, addr = ss.accept()
@@ -108,7 +104,9 @@ def main():
             channels[chan].adduser(conn, nickname)
 
         connections[conn] = nickname
+
         print("connected to: " + str(addr[0]) + ":" + str(addr[1]))
         start_new_thread(client_thread, (conn,))
+
 
 main()
