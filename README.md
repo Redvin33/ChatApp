@@ -7,5 +7,5 @@ For running the chatserver you need to have both server.py and channel.py downlo
 # Screenshots
 <p align="center">
   <img src="connect.jpg" width="350"/>
-  <img src="chat.jpg" width="600"/>
+  <img src="chat.jpg" />
 </p>
